@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn chi tiết — Nhận dạng khuôn mặt bằng Phép chiếu vuông góc (Eigenfaces)</title>
+
+<!-- MathJax để hiển thị công thức toán -->
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<style>
+  :root{
+    --bg:#f7f8fb; --card:#ffffff; --ink:#1f2933; --muted:#5b6b7b;
+    --brand:#3b5bdb; --brand2:#7048e8; --accent:#0ca678; --warn:#e8590c;
+    --good:#2f9e44; --bad:#e03131; --line:#e3e8ef; --code:#0b1021;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.7; font-size:17px;
+  }
+  /* Layout */
+  .wrap{display:flex; max-width:1500px; margin:0 auto;}
+  nav{
+    position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+    width:300px; min-width:300px; padding:24px 18px; background:#0f1424; color:#cdd5e0;
+    font-size:14.5px;
+  }
+  nav h2{color:#fff; font-size:15px; letter-spacing:.5px; text-transform:uppercase; margin:18px 0 8px;}
+  nav h2:first-child{margin-top:0}
+  nav a{display:block; color:#aeb9c9; text-decoration:none; padding:5px 10px; border-radius:7px; margin:2px 0;}
+  nav a:hover{background:#1c2236; color:#fff;}
+  nav .lvl2{padding-left:22px; font-size:13.5px; color:#8d99ab;}
+  main{flex:1; min-width:0; padding:42px 56px 120px;}
+  @media (max-width:980px){
+    nav{display:none} main{padding:24px}
+  }
+
+  /* Headings */
+  h1{font-size:32px; line-height:1.25; margin:0 0 6px; color:#11243f;}
+  h2{font-size:26px; margin:54px 0 14px; padding-top:14px; border-top:3px solid var(--line); color:#11243f;}
+  h3{font-size:21px; margin:34px 0 10px; color:#1b3a63;}
+  h4{font-size:18px; margin:24px 0 8px; color:#23476f;}
+  p{margin:12px 0;}
+  .sub{color:var(--muted); font-size:18px; margin-top:0;}
+
+  /* Cards / callouts */
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 24px; margin:18px 0; box-shadow:0 1px 3px rgba(20,30,60,.04);}
+  .note,.tip,.warn,.key,.analogy{border-radius:12px; padding:14px 18px; margin:18px 0; border-left:6px solid;}
+  .note{background:#eef4ff; border-color:var(--brand);}
+  .tip{background:#e9fbf3; border-color:var(--accent);}
+  .warn{background:#fff4e6; border-color:var(--warn);}
+  .key{background:#f3efff; border-color:var(--brand2);}
+  .analogy{background:#fff9db; border-color:#f59f00;}
+  .note b,.tip b,.warn b,.key b,.analogy b{display:inline-block;}
+  .tag{display:inline-block; font-size:12px; font-weight:700; padding:2px 9px; border-radius:20px; background:var(--brand); color:#fff; vertical-align:middle; margin-left:6px;}
+
+  /* Code */
+  pre{background:var(--code); color:#e6edf3; padding:18px 20px; border-radius:12px; overflow:auto; font-size:14.5px; line-height:1.55;}
+  code{font-family:"JetBrains Mono","Consolas",monospace;}
+  p code,li code,td code{background:#eef1f6; color:#b3005c; padding:1px 6px; border-radius:6px; font-size:14px;}
+  pre code{background:none; color:inherit; padding:0;}
+  .cmt{color:#7d8aa1;} .kw{color:#ff7b72;} .fn{color:#d2a8ff;} .str{color:#a5d6ff;} .num{color:#79c0ff;}
+
+  /* Tables */
+  table{border-collapse:collapse; width:100%; margin:16px 0; font-size:15.5px; background:#fff; border-radius:10px; overflow:hidden;}
+  th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top;}
+  th{background:#eef2fb; color:#1b3a63;}
+  tr:nth-child(even) td{background:#fafbfe;}
+
+  /* Misc */
+  .imgbox{text-align:center; margin:22px 0;}
+  .imgbox img{max-width:100%; border:1px solid var(--line); border-radius:12px; box-shadow:0 2px 8px rgba(20,30,60,.08);}
+  .cap{color:var(--muted); font-size:14px; margin-top:8px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr}}
+  .pix{border-collapse:collapse; margin:10px 0; font-family:monospace; width:auto;}
+  .pix td{width:42px; height:42px; text-align:center; padding:0; border:1px solid #444; color:#fff; font-size:13px;}
+  .step-badge{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--brand); color:#fff; font-weight:700; margin-right:8px;}
+  .good{color:var(--good); font-weight:700;}
+  .bad{color:var(--bad); font-weight:700;}
+  .pillrow{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0;}
+  .pill{background:#fff; border:1px solid var(--line); border-radius:30px; padding:6px 14px; font-size:14px;}
+  hr{border:none; border-top:2px dashed var(--line); margin:40px 0;}
+  .toc-top{font-size:14px; color:var(--muted);}
+  details{background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 16px; margin:12px 0;}
+  summary{cursor:pointer; font-weight:600; color:var(--brand);}
+  .flow{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:16px 0;}
+  .flow .box{background:#eef2fb; border:1px solid #c7d2e8; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600;}
+  .flow .arrow{color:var(--brand); font-size:22px;}
+  .kbd{background:#eef1f6; border:1px solid #cfd6e2; border-bottom-width:2px; border-radius:6px; padding:1px 7px; font-family:monospace; font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ SIDEBAR ============ -->
+<nav>
+  <h2>Bắt đầu</h2>
+  <a href="#gioi-thieu">0 · Dự án này là gì?</a>
+  <a href="#buc-tranh">1 · Bức tranh tổng thể</a>
+
+  <h2>Kiến thức nền</h2>
+  <a href="#anh-la-so">2 · Ảnh chính là các con số</a>
+  <a href="#dstt" >3 · Đại số tuyến tính dễ hiểu</a>
+  <a href="#dstt-vector" class="lvl2">Vector</a>
+  <a href="#dstt-matrix" class="lvl2">Ma trận</a>
+  <a href="#dstt-distance" class="lvl2">Khoảng cách</a>
+  <a href="#dstt-mean" class="lvl2">Trung bình</a>
+  <a href="#dstt-proj" class="lvl2">Phép chiếu vuông góc</a>
+  <a href="#dstt-eigen" class="lvl2">Trị riêng & Vector riêng</a>
+
+  <h2>Thuật toán</h2>
+  <a href="#y-tuong">4 · Ý tưởng Eigenfaces</a>
+  <a href="#vi-du-tay">5 · Ví dụ tính tay từng bước</a>
+  <a href="#thu-thuat">6 · Thủ thuật ma trận nhỏ</a>
+
+  <h2>Mã nguồn</h2>
+  <a href="#python">7 · Python siêu tốc</a>
+  <a href="#cau-truc">8 · Cấu trúc dự án</a>
+  <a href="#code-dataloader" class="lvl2">dataloader.py</a>
+  <a href="#code-recognizer" class="lvl2">recognizer.py</a>
+  <a href="#code-baseline" class="lvl2">baseline.py</a>
+  <a href="#code-khac" class="lvl2">evaluator / visualizer</a>
+
+  <h2>Chạy & Kết quả</h2>
+  <a href="#chay">9 · Cách chạy dự án</a>
+  <a href="#ket-qua">10 · Đọc hiểu kết quả</a>
+
+  <h2>Tra cứu</h2>
+  <a href="#faq">11 · Câu hỏi thường gặp</a>
+  <a href="#tu-dien">12 · Từ điển thuật ngữ</a>
+</nav>
+
+<!-- ============ MAIN ============ -->
+<main>
+
+<h1>Nhận dạng khuôn mặt bằng Phép chiếu vuông góc</h1>
+<p class="sub">Hướng dẫn cực kỳ chi tiết — dành cho người <b>chưa biết gì</b> về Đại số tuyến tính và Python.</p>
+
+<div class="note">
+  <b>Đọc tài liệu này như thế nào?</b><br>
+  Bạn <u>không cần</u> biết trước đại số tuyến tính hay Python. Tài liệu đi từ con số 0:
+  ảnh là gì → vector là gì → thuật toán làm gì → code chạy ra sao.
+  Hãy đọc tuần tự từ trên xuống. Mỗi khái niệm đều có <b>ví dụ bằng số cụ thể</b> để bạn tự nhẩm theo.
+  Những công thức toán (dạng $\;ax+b\;$) chỉ để tham khảo — phần chữ bên cạnh luôn giải thích bằng lời.
+</div>
+
+<!-- ====================================================== -->
+<h2 id="gioi-thieu">0 · Dự án này là gì?</h2>
+
+<p>
+Đây là một <b>bài tập lớn môn Đại số tuyến tính</b>. Mục tiêu: dùng một công cụ toán học tên là
+<b>"phép chiếu vuông góc"</b> để giải một bài toán thực tế trong <b>thị giác máy tính</b> (computer vision):
+</p>
+
+<div class="card" style="text-align:center; font-size:19px;">
+  🖼️ Cho máy tính xem một <b>tấm ảnh khuôn mặt</b> mới<br>
+  → máy tính trả lời: <b>"Đây là người số mấy?"</b>
+</div>
+
+<p>
+Bài toán này gọi là <b>nhận dạng khuôn mặt</b> (face recognition). Phương pháp dùng trong dự án tên là
+<b>Eigenfaces</b> ("các khuôn mặt riêng"), do hai nhà khoa học Turk &amp; Pentland đề xuất năm 1991.
+Nó là một ứng dụng kinh điển của đại số tuyến tính.
+</p>
+
+<h3>Bộ dữ liệu (dataset)</h3>
+<p>Dự án dùng bộ ảnh khuôn mặt <b>ORL / AT&amp;T Faces</b>:</p>
+<div class="pillrow">
+  <span class="pill">👤 <b>40</b> người khác nhau</span>
+  <span class="pill">📸 <b>10</b> ảnh mỗi người</span>
+  <span class="pill">🗂️ Tổng cộng <b>400</b> ảnh</span>
+  <span class="pill">📐 Mỗi ảnh <b>92 × 112</b> pixel</span>
+  <span class="pill">⚫ Ảnh <b>trắng đen</b> (grayscale)</span>
+</div>
+
+<div class="warn">
+  <b>Ràng buộc quan trọng của bài tập:</b> <u>Không được dùng "hộp đen"</u>.
+  Nghĩa là toàn bộ phần toán (tính trị riêng, vector riêng, phép chiếu…) phải <b>tự viết bằng tay</b> với thư viện
+  <code>numpy</code> cơ bản — <b>không</b> được gọi hàm có sẵn như <code>sklearn.PCA</code> làm hết cho mình.
+  Lý do: để chứng minh nhóm <b>thực sự hiểu</b> bản chất toán học, chứ không chỉ gọi hàm.
+</div>
+
+<!-- ====================================================== -->
+<h2 id="buc-tranh">1 · Bức tranh tổng thể (đọc 1 lần là nắm được hồn)</h2>
+
+<p>Trước khi đi vào chi tiết, hãy nắm ý tưởng lớn bằng một <b>phép so sánh đời thường</b>.</p>
+
+<div class="analogy">
+  <b>🎨 Ví von: pha màu sơn.</b><br>
+  Bất kỳ màu sơn nào (xanh rêu, tím nhạt, cam đất…) đều có thể pha ra từ <b>3 màu gốc</b>:
+  đỏ, vàng, xanh dương. Bạn chỉ cần ghi <b>"liều lượng"</b> mỗi màu gốc, ví dụ <i>(đỏ 30%, vàng 50%, xanh 20%)</i>,
+  là mô tả được màu đó — thay vì phải mô tả từng giọt sơn.<br><br>
+  <b>Eigenfaces làm y hệt với khuôn mặt:</b> nó tìm ra một bộ <b>"khuôn mặt gốc"</b> (gọi là <i>eigenfaces</i>).
+  Mỗi khuôn mặt thật = một <b>công thức pha trộn</b> các khuôn mặt gốc đó. Thay vì lưu cả 10.304 con số (số pixel),
+  ta chỉ cần lưu vài chục "liều lượng pha trộn". So sánh hai khuôn mặt = so sánh hai công thức pha trộn → nhanh và chính xác hơn nhiều.
+</div>
+
+<p>Toàn bộ dự án có thể tóm lại trong sơ đồ sau:</p>
+
+<div class="flow">
+  <span class="box">📁 400 ảnh</span><span class="arrow">→</span>
+  <span class="box">🔢 Biến ảnh thành dãy số</span><span class="arrow">→</span>
+  <span class="box">🧮 Tìm "khuôn mặt gốc"<br>(eigenfaces)</span><span class="arrow">→</span>
+  <span class="box">📍 Mỗi ảnh = 1 điểm<br>trong không gian mới</span><span class="arrow">→</span>
+  <span class="box">🎯 Ảnh mới → tìm điểm<br>gần nhất → ra tên</span>
+</div>
+
+<p>
+Phần còn lại của tài liệu sẽ giải thích <b>từng mũi tên</b> ở trên: tại sao biến ảnh thành số, "khuôn mặt gốc" tìm bằng cách nào,
+"không gian mới" là gì, và "gần nhất" được tính ra sao.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="anh-la-so">2 · Bí mật đầu tiên: Ảnh chính là các con số</h2>
+
+<p>
+Máy tính không "nhìn" thấy khuôn mặt. Với máy tính, một tấm ảnh trắng đen chỉ là một <b>bảng các con số</b>.
+Mỗi ô vuông nhỏ gọi là <b>pixel</b> (điểm ảnh). Mỗi pixel có một con số <b>độ sáng</b>:
+</p>
+
+<ul>
+  <li><b>0</b> = đen tuyền</li>
+  <li><b>255</b> = trắng tinh</li>
+  <li>Các số ở giữa = các mức xám (càng lớn càng sáng)</li>
+</ul>
+
+<p>Ví dụ một ảnh tí hon <b>3×3 pixel</b> có thể là bảng số sau (bên trái là số, bên phải là hình thực tế):</p>
+
+<div class="grid2">
+<div class="card">
+<b>Bảng độ sáng (3×3):</b>
+<table class="pix" style="font-family:monospace;">
+<tr><td style="background:#0a0a0a">10</td><td style="background:#141414">20</td><td style="background:#1e1e1e">30</td></tr>
+<tr><td style="background:#141414">20</td><td style="background:#1e1e1e">30</td><td style="background:#282828">40</td></tr>
+<tr><td style="background:#1e1e1e">30</td><td style="background:#282828">40</td><td style="background:#323232">50</td></tr>
+</table>
+<span class="cap">Số nhỏ = ô tối, số lớn = ô sáng hơn.</span>
+</div>
+<div class="card">
+<b>Ý nghĩa:</b>
+<p>Đây là một ảnh tối, sáng dần từ góc trên-trái xuống góc dưới-phải. Mắt người thấy "một mảng xám chuyển sắc";
+máy tính thấy "9 con số".</p>
+<p class="note" style="margin:0">Ảnh thật trong dự án là <b>92×112 = 10.304 pixel</b> → tức <b>10.304 con số</b> cho mỗi ảnh!</p>
+</div>
+</div>
+
+<h3>Bước "duỗi thẳng" ảnh (flatten / vector hóa)</h3>
+<p>
+Để làm toán cho tiện, ta <b>duỗi</b> bảng số 2 chiều thành <b>một hàng số dài</b> (đọc từ trái sang phải, từ trên xuống dưới):
+</p>
+
+<pre><code>Bảng 3×3:                 Duỗi thành 1 hàng (9 số):
+[10, 20, 30]
+[20, 30, 40]   ───────►   [10, 20, 30, 20, 30, 40, 30, 40, 50]
+[30, 40, 50]              └── đây gọi là một "vector" 9 chiều ──┘</code></pre>
+
+<div class="key">
+  <b>Khái niệm chốt:</b> Một ảnh = một <b>vector</b> (dãy số). Ảnh 3×3 → vector 9 số.
+  Ảnh thật 92×112 → vector <b>10.304 số</b>. Mỗi ảnh giống như <b>một tọa độ</b> trong một "không gian 10.304 chiều".
+  Nghe đáng sợ, nhưng về bản chất nó chỉ là "một danh sách rất dài các con số".
+</div>
+
+<!-- ====================================================== -->
+<h2 id="dstt">3 · Đại số tuyến tính, giải thích thật dễ</h2>
+<p>Phần này dạy đúng những "viên gạch" toán bạn cần — không hơn. Mỗi viên gạch có ví dụ bằng số nhỏ.</p>
+
+<h3 id="dstt-vector">3.1 · Vector — chỉ là một danh sách số</h3>
+<p>
+Một <b>vector</b> là một danh sách số có thứ tự, ví dụ $\mathbf{x} = [10, 20, 30]$. Như vừa thấy, mỗi ảnh chính là một vector.
+Bạn có thể hình dung vector 2 số $[3, 4]$ như một <b>mũi tên</b> trên giấy: đi sang phải 3, đi lên 4.
+</p>
+<table>
+<tr><th>Phép toán trên vector</th><th>Cách làm</th><th>Ví dụ</th></tr>
+<tr><td>Cộng hai vector</td><td>Cộng từng cặp số cùng vị trí</td><td>$[1,2]+[10,20]=[11,22]$</td></tr>
+<tr><td>Trừ hai vector</td><td>Trừ từng cặp số cùng vị trí</td><td>$[10,20]-[1,2]=[9,18]$</td></tr>
+<tr><td>Nhân vector với 1 số</td><td>Nhân số đó vào từng phần tử</td><td>$2\times[3,4]=[6,8]$</td></tr>
+</table>
+
+<h3 id="dstt-matrix">3.2 · Ma trận — một bảng số (nhiều vector xếp chồng)</h3>
+<p>
+Một <b>ma trận</b> là một bảng số hình chữ nhật. Trong dự án, ta xếp <b>400 ảnh</b> thành một ma trận khổng lồ:
+mỗi <b>hàng</b> là một ảnh (một vector 10.304 số). Như vậy ma trận có 400 hàng × 10.304 cột.
+</p>
+<pre><code>          pixel1 pixel2 ... pixel10304
+ảnh 1  [   34     12   ...    200     ]   ← vector của ảnh 1
+ảnh 2  [   30     15   ...    198     ]   ← vector của ảnh 2
+ ...   [  ...    ...   ...    ...     ]
+ảnh400 [   90     88   ...     50     ]</code></pre>
+<p>Phép quan trọng nhất là <b>nhân ma trận</b>, nhưng bạn chỉ cần nhớ một việc: nhân ma trận = <b>làm hàng loạt phép "tích vô hướng"</b> (giải thích ngay dưới đây) cùng lúc. Máy tính lo phần tính toán; bạn chỉ cần hiểu <i>ý nghĩa</i>.</p>
+
+<h4>Tích vô hướng (dot product) — "hai vector giống nhau cỡ nào"</h4>
+<p>Nhân từng cặp số rồi cộng lại. Kết quả là <b>một con số duy nhất</b>.</p>
+<pre><code>[1, 2, 3] · [4, 5, 6] = (1×4) + (2×5) + (3×6) = 4 + 10 + 18 = 32</code></pre>
+
+<h3 id="dstt-distance">3.3 · Khoảng cách giữa hai vector — "hai ảnh khác nhau bao nhiêu"</h3>
+<p>
+Đây là ý tưởng <b>cốt lõi của việc nhận dạng</b>. Hai ảnh càng <i>giống</i> nhau thì hai vector của chúng càng <i>gần</i> nhau.
+Ta đo độ gần bằng <b>khoảng cách Euclidean</b> — chính là định lý Pythagoras mở rộng:
+</p>
+<div class="card">
+Khoảng cách $= \sqrt{(\text{hiệu số 1})^2 + (\text{hiệu số 2})^2 + \dots}$
+<br><br>
+<b>Ví dụ:</b> hai vector $\mathbf{a}=[1,2]$ và $\mathbf{b}=[4,6]$.
+<pre style="margin-top:8px"><code>Hiệu từng cặp:  (1−4) = −3,   (2−6) = −4
+Bình phương:    (−3)² = 9,    (−4)² = 16
+Cộng lại:       9 + 16 = 25
+Khai căn:       √25 = 5      ← khoảng cách = 5</code></pre>
+</div>
+<div class="tip">
+  <b>Trực giác:</b> khoảng cách <b>nhỏ</b> ⇒ hai ảnh <b>giống nhau</b>. Để nhận dạng một ảnh mới,
+  ta sẽ tìm trong kho ảnh đã biết xem ảnh nào có khoảng cách <b>nhỏ nhất</b> tới nó — đó chính là người cần tìm.
+  (Cách này có tên: <b>"láng giềng gần nhất"</b> — 1-Nearest Neighbor, viết tắt 1-NN.)
+</div>
+
+<h3 id="dstt-mean">3.4 · Khuôn mặt trung bình (mean) — "khuôn mặt trung tính"</h3>
+<p>
+Lấy trung bình cộng của <b>tất cả</b> các ảnh: cộng tất cả rồi chia cho số lượng — nhưng làm <b>từng pixel một</b>.
+Kết quả là một "khuôn mặt trung bình" $\bar{\mathbf{x}}$ trông mờ mờ, là khuôn mặt "chung chung" của cả tập.
+</p>
+<pre><code>Ba ảnh (mỗi ảnh 3 số):
+  ảnh1 = [10, 20, 30]
+  ảnh2 = [20, 30, 40]
+  ảnh3 = [30, 40, 50]
+
+Trung bình từng cột:
+  pixel1: (10+20+30)/3 = 20
+  pixel2: (20+30+40)/3 = 30
+  pixel3: (30+40+50)/3 = 40
+  →  mean = [20, 30, 40]</code></pre>
+
+<div class="imgbox">
+  <img src="outputs/mean_face.png" alt="Khuôn mặt trung bình">
+  <div class="cap">Khuôn mặt trung bình thật của 320 ảnh huấn luyện — file <code>outputs/mean_face.png</code> do dự án tạo ra.</div>
+</div>
+
+<h4>Trung tâm hóa (centering) — "trừ đi phần chung"</h4>
+<p>
+Sau khi có khuôn mặt trung bình, ta lấy <b>mỗi ảnh trừ đi khuôn mặt trung bình</b>. Phần còn lại (gọi là $\Phi$, đọc là "phi")
+chính là <b>nét riêng</b> của từng người — điều khiến họ <i>khác</i> với người trung bình. Đây mới là thông tin hữu ích để phân biệt.
+</p>
+<pre><code>ảnh1 − mean = [10,20,30] − [20,30,40] = [−10, −10, −10]   ← "tối hơn trung bình"
+ảnh3 − mean = [30,40,50] − [20,30,40] = [+10, +10, +10]   ← "sáng hơn trung bình"</code></pre>
+
+<h3 id="dstt-proj">3.5 · ⭐ Phép chiếu vuông góc — trái tim của cả dự án</h3>
+
+<div class="analogy">
+  <b>☀️ Ví von: cái bóng.</b><br>
+  Một cây bút chì dựng nghiêng trong nắng sẽ đổ <b>bóng</b> xuống mặt bàn. Cái bóng là "hình chiếu" của cây bút
+  xuống mặt phẳng bàn — nó <b>đơn giản hơn</b> (2 chiều thay vì 3 chiều) nhưng vẫn giữ được thông tin quan trọng về hướng và độ dài của bút.
+  <br><br>
+  <b>Phép chiếu vuông góc</b> làm đúng việc đó với khuôn mặt: lấy một vector ảnh <b>10.304 chiều</b> (quá phức tạp)
+  và "chiếu" nó xuống một "mặt phẳng" đặc biệt chỉ còn vài chục chiều — đủ đơn giản để xử lý, mà vẫn giữ những nét quan trọng nhất của khuôn mặt.
+</div>
+
+<p>
+"Mặt phẳng đặc biệt" để chiếu xuống được tạo bởi các <b>eigenfaces</b> (sẽ nói ở mục sau). Việc chiếu một ảnh xuống đó
+cho ta một bộ <b>tọa độ mới</b> — chính là "công thức pha trộn" trong ví von màu sơn ở đầu bài. Công thức toán:
+</p>
+<div class="card" style="text-align:center; font-size:20px">
+  $\hat{\mathbf{y}} = U^T (\mathbf{x} - \bar{\mathbf{x}})$
+  <div class="cap" style="font-size:15px; margin-top:10px">
+  "Tọa độ mới" = (các eigenfaces) nhân với (ảnh đã trừ khuôn mặt trung bình)
+  </div>
+</div>
+<p>Đừng lo về ký hiệu — phần "Ví dụ tính tay" bên dưới sẽ làm phép chiếu này <b>bằng số cụ thể</b>, từng bước một.</p>
+
+<p><b>Tại sao gọi là "vuông góc"?</b> Vì các eigenface được chọn sao cho chúng <b>vuông góc với nhau</b> (như các trục Ox, Oy, Oz vuông góc trong không gian). Tính chất "vuông góc" này khiến phép chiếu không bị méo và giữ được khoảng cách một cách trung thực — y như cái bóng đổ thẳng góc xuống bàn thì trung thực hơn bóng đổ xiên.</p>
+
+<h3 id="dstt-eigen">3.6 · Trị riêng &amp; Vector riêng — "các hướng quan trọng nhất"</h3>
+<p>
+Đây là khái niệm "khó" nhất, nhưng ta chỉ cần hiểu <b>ý nghĩa</b>, không cần biết cách tính tay (máy tính lo việc đó qua hàm <code>numpy.linalg.eigh</code>).
+</p>
+<div class="analogy">
+  <b>🎈 Ví von: đám đông người.</b><br>
+  Tưởng tượng hàng trăm khuôn mặt là các <b>chấm điểm</b> rải rác trong không gian. Đám chấm này không rải đều —
+  nó <b>trải dài</b> theo vài hướng nhất định (giống một đám mây hình điếu xì gà trải theo một trục).<br><br>
+  • <b>Vector riêng</b> (eigenvector) = <b>các hướng</b> mà đám điểm trải rộng nhất.<br>
+  • <b>Trị riêng</b> (eigenvalue) = <b>độ trải rộng</b> theo mỗi hướng đó (con số càng lớn = hướng đó càng quan trọng).
+</div>
+<p>
+Trong dự án, <b>mỗi vector riêng quan trọng = một "eigenface"</b> (một khuôn mặt gốc). Trị riêng đi kèm cho biết
+eigenface đó "giải thích" được bao nhiêu phần trăm sự khác biệt giữa các khuôn mặt. Ta giữ lại vài chục eigenface
+có trị riêng <b>lớn nhất</b> (quan trọng nhất) và bỏ đi phần còn lại — đó chính là cách "nén" từ 10.304 chiều xuống còn vài chục chiều.
+</p>
+
+<div class="imgbox">
+  <img src="outputs/eigenfaces.png" alt="Các eigenfaces">
+  <div class="cap">20 eigenfaces "quan trọng nhất" của dataset (file <code>outputs/eigenfaces.png</code>). Trông như các khuôn mặt ma quái —
+  mỗi cái nắm bắt một kiểu biến đổi (ánh sáng, hình dạng mắt/mũi…). Mọi khuôn mặt thật đều là sự pha trộn của chúng.</div>
+</div>
+
+<div class="imgbox">
+  <img src="outputs/variance_ratio.png" alt="Tỉ lệ phương sai">
+  <div class="cap">Biểu đồ này (file <code>outputs/variance_ratio.png</code>) cho thấy: chỉ cần vài chục eigenface đầu tiên là đã
+  "giải thích" được ~95% sự khác biệt giữa các khuôn mặt → nên ta không cần giữ cả 10.304 chiều.</div>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="y-tuong">4 · Ý tưởng thuật toán Eigenfaces (ghép các viên gạch lại)</h2>
+
+<p>Giờ ta ghép mọi thứ đã học. Thuật toán có 2 giai đoạn:</p>
+
+<h3>Giai đoạn A — HỌC (chỉ làm 1 lần, gọi là <code>fit</code>)</h3>
+<table>
+<tr><th>#</th><th>Việc làm</th><th>Khái niệm đã học</th></tr>
+<tr><td>1</td><td>Đọc 320 ảnh huấn luyện, duỗi mỗi ảnh thành vector 10.304 số</td><td>§2 Vector hóa</td></tr>
+<tr><td>2</td><td>Tính khuôn mặt trung bình $\bar{\mathbf{x}}$</td><td>§3.4 Trung bình</td></tr>
+<tr><td>3</td><td>Trừ trung bình khỏi mỗi ảnh để lấy "nét riêng" $\Phi$</td><td>§3.4 Trung tâm hóa</td></tr>
+<tr><td>4</td><td>Tìm các <b>eigenface</b> (hướng quan trọng nhất) và giữ lại $k$ cái tốt nhất</td><td>§3.6 Trị riêng/vector riêng</td></tr>
+<tr><td>5</td><td>Chiếu cả 320 ảnh xuống không gian eigenface → lưu lại "tọa độ" của từng người</td><td>§3.5 Phép chiếu</td></tr>
+</table>
+
+<h3>Giai đoạn B — NHẬN DẠNG (làm mỗi khi có ảnh mới, gọi là <code>predict</code>)</h3>
+<table>
+<tr><th>#</th><th>Việc làm</th><th>Khái niệm đã học</th></tr>
+<tr><td>1</td><td>Lấy ảnh mới, trừ khuôn mặt trung bình, rồi <b>chiếu</b> xuống không gian eigenface → ra "tọa độ" của nó</td><td>§3.5 Phép chiếu</td></tr>
+<tr><td>2</td><td>Tính <b>khoảng cách</b> từ tọa độ này tới tọa độ của cả 320 ảnh đã lưu</td><td>§3.3 Khoảng cách</td></tr>
+<tr><td>3</td><td>Ảnh huấn luyện nào <b>gần nhất</b> → trả về tên người đó</td><td>§3.3 Láng giềng gần nhất</td></tr>
+</table>
+
+<div class="key">
+  <b>Toàn bộ thuật toán gói gọn trong một câu:</b> "Biến mỗi khuôn mặt thành một bộ tọa độ ngắn gọn (bằng phép chiếu),
+  rồi nhận dạng ảnh mới bằng cách tìm khuôn mặt cũ có tọa độ gần nó nhất."
+</div>
+
+<!-- ====================================================== -->
+<h2 id="vi-du-tay">5 · Ví dụ tính tay từng bước (con số cụ thể!)</h2>
+<p>
+Đây là phần quan trọng nhất để <b>thực sự hiểu</b>. Ta dùng dữ liệu tí hon trong file
+<a href="manual_example.py"><code>manual_example.py</code></a>: chỉ <b>4 ảnh 3×3 pixel</b> (vector 9 số), 2 người, và 1 ảnh cần nhận dạng.
+Bạn có thể lấy máy tính bấm tay theo.
+</p>
+
+<h3>Dữ liệu</h3>
+<table>
+<tr><th>Ảnh</th><th>Vector 9 số</th><th>Người</th></tr>
+<tr><td>$\mathbf{x}_1$</td><td><code>[10, 20, 30, 20, 30, 40, 30, 40, 50]</code></td><td>Người 1 (ảnh tối, sáng dần)</td></tr>
+<tr><td>$\mathbf{x}_2$</td><td><code>[12, 22, 28, 22, 28, 42, 28, 42, 48]</code></td><td>Người 1 (gần giống ảnh 1)</td></tr>
+<tr><td>$\mathbf{x}_3$</td><td><code>[90, 80, 70, 80, 70, 60, 70, 60, 50]</code></td><td>Người 2 (ảnh sáng, tối dần)</td></tr>
+<tr><td>$\mathbf{x}_4$</td><td><code>[88, 78, 72, 78, 72, 58, 72, 58, 52]</code></td><td>Người 2 (gần giống ảnh 3)</td></tr>
+<tr style="background:#fff4e6"><td>$\mathbf{x}_{test}$</td><td><code>[11, 21, 29, 21, 29, 41, 29, 41, 49]</code></td><td><b>?</b> (cần đoán — kỳ vọng: Người 1)</td></tr>
+</table>
+<p>Để mắt thường thấy ngay: ảnh test trông rất giống ảnh của Người 1. Hãy xem thuật toán có "thấy" được điều đó không.</p>
+
+<h4><span class="step-badge">2</span>Khuôn mặt trung bình</h4>
+<p>Cộng 4 ảnh huấn luyện theo từng pixel rồi chia 4. Ví dụ pixel đầu: $(10+12+90+88)/4 = 200/4 = 50$. Làm cho cả 9 pixel:</p>
+<pre><code>x̄ = [50, 50, 50, 50, 50, 50, 50, 50, 50]</code></pre>
+<p>(Trùng hợp đẹp: trung bình của 2 người tối + 2 người sáng ra đúng mức xám giữa = 50.)</p>
+
+<h4><span class="step-badge">3</span>Trung tâm hóa (trừ trung bình)</h4>
+<pre><code>Φ₁ = x₁ − x̄ = [−40,−30,−20,−30,−20,−10,−20,−10,  0]   ← Người 1: âm (tối hơn TB)
+Φ₃ = x₃ − x̄ = [ 40, 30, 20, 30, 20, 10, 20, 10,  0]   ← Người 2: dương (sáng hơn TB)</code></pre>
+<p>Thấy rõ: hai người có "nét riêng" ngược dấu nhau hoàn toàn. Đây chính là tín hiệu để phân biệt họ.</p>
+
+<h4><span class="step-badge">4</span>Tìm eigenfaces</h4>
+<p>
+Máy tính phân tích 4 vector $\Phi$ và phát hiện: <b>hướng biến đổi quan trọng nhất</b> chính là trục "tối ↔ sáng"
+(đi từ kiểu Người 1 sang kiểu Người 2). Đó là eigenface #1. Nó gom được tuyệt đại đa số sự khác biệt
+(trong ví dụ này khoảng <b>99%</b>). Vài eigenface sau chỉ nắm các khác biệt nhỏ xíu giữa 2 ảnh của cùng một người.
+</p>
+
+<h4><span class="step-badge">5</span>Chiếu các ảnh huấn luyện → tọa độ mới</h4>
+<p>Sau khi chiếu (nhân ảnh đã trung tâm hóa với eigenface), mỗi ảnh thu được một bộ tọa độ ngắn. Tọa độ đầu tiên (theo eigenface #1) trông như:</p>
+<pre><code>x₁ (Người 1) → tọa độ ≈ −62    x₃ (Người 2) → tọa độ ≈ +62
+x₂ (Người 1) → tọa độ ≈ −58    x₄ (Người 2) → tọa độ ≈ +58</code></pre>
+<p>Tuyệt vời: hai ảnh Người 1 nằm cụm ở vùng <b>âm</b>, hai ảnh Người 2 cụm ở vùng <b>dương</b>. Chúng tách bạch rõ ràng!</p>
+
+<h4><span class="step-badge">8</span>Nhận dạng ảnh test</h4>
+<p>Chiếu ảnh test cũng theo cách đó, được tọa độ ≈ <b>−60</b>. Giờ đo khoảng cách tới 4 ảnh đã biết:</p>
+<pre><code>khoảng cách tới x₁ (−62):  nhỏ   ✔
+khoảng cách tới x₂ (−58):  nhỏ   ✔   ← gần nhất!
+khoảng cách tới x₃ (+62):  rất lớn ✗
+khoảng cách tới x₄ (+58):  rất lớn ✗</code></pre>
+<p class="good">→ Ảnh test gần x₂ (Người 1) nhất → Thuật toán trả lời: <b>Người 1</b>. Chính xác! ✓</p>
+
+<div class="imgbox">
+  <img src="outputs/manual_example.png" alt="Hình minh họa ví dụ tính tay" onerror="this.parentNode.style.display='none'">
+  <div class="cap">Hình trực quan của ví dụ tính tay (tạo ra khi chạy <code>python manual_example.py</code>): hàng trên là các ảnh,
+  hàng dưới là biểu đồ tọa độ — thấy rõ 2 người tách thành 2 cụm, ngôi sao cam (ảnh test) nằm trong cụm Người 1.</div>
+</div>
+
+<details>
+<summary>▶ Xem toàn bộ 9 bước mà file <code>manual_example.py</code> in ra console</summary>
+<table>
+<tr><th>Bước</th><th>In ra gì</th></tr>
+<tr><td>1</td><td>Từng vector ảnh và ảnh test</td></tr>
+<tr><td>2</td><td>Phép cộng/chia để ra từng pixel của khuôn mặt trung bình</td></tr>
+<tr><td>3</td><td>Từng $\Phi_i$ (ảnh đã trừ trung bình) và ma trận $\Phi$</td></tr>
+<tr><td>4</td><td>Ma trận hiệp phương sai nhỏ $L$ và giải thích "thủ thuật"</td></tr>
+<tr><td>5</td><td>Trị riêng (sắp xếp giảm dần) + % phương sai mỗi cái giải thích</td></tr>
+<tr><td>6</td><td>Khôi phục eigenfaces + kiểm tra chúng vuông góc với nhau ($U^TU=I$)</td></tr>
+<tr><td>7</td><td>Tọa độ của từng ảnh huấn luyện sau khi chiếu</td></tr>
+<tr><td>8</td><td>Chiếu ảnh test, tính từng khoảng cách, ra kết quả</td></tr>
+<tr><td>9</td><td>Vẽ biểu đồ <code>outputs/manual_example.png</code></td></tr>
+</table>
+</details>
+
+<!-- ====================================================== -->
+<h2 id="thu-thuat">6 · Một "thủ thuật" thông minh cần biết (ma trận nhỏ)</h2>
+<p>
+Có một chi tiết kỹ thuật xuất hiện trong code mà bạn nên hiểu đại ý, vì nó là điểm "ăn tiền" để nói khi báo cáo.
+</p>
+<div class="warn">
+  <b>Vấn đề:</b> Để tìm eigenface một cách "sách giáo khoa", ta phải lập <b>ma trận hiệp phương sai</b> $C$ có kích thước
+  $10304 \times 10304$ ≈ <b>106 triệu con số</b>. Máy tính thường sẽ hết RAM hoặc tính cực chậm.
+</div>
+<div class="tip">
+  <b>Thủ thuật Turk &amp; Pentland (1991):</b> Vì ta chỉ có 320 ảnh (ít hơn nhiều so với 10.304 pixel),
+  ta tính một ma trận <b>nhỏ</b> $L$ kích thước chỉ $320 \times 320$ thay thế. Người ta <b>chứng minh được</b> rằng
+  vector riêng của ma trận nhỏ này có thể "biến đổi ngược" để ra đúng eigenface ta cần — với <i>cùng</i> trị riêng.
+  Kết quả y hệt nhưng nhanh hơn hàng nghìn lần. Trong code:
+</div>
+<pre><code class="language-python"><span class="cmt"># Cách "sách giáo khoa" (RẤT chậm, không dùng):</span>
+<span class="cmt"># C = Phi.T @ Phi / N   → ma trận 10304 × 10304</span>
+
+<span class="cmt"># Thủ thuật (nhanh, dùng trong dự án):</span>
+L = (Phi @ Phi.T) / N   <span class="cmt"># ma trận 320 × 320 — nhỏ hơn rất nhiều!</span></code></pre>
+<p>Nếu giám khảo hỏi "tại sao ma trận của bạn lại là $320\times320$ chứ không phải $10304\times10304$?" → đây là câu trả lời.</p>
+
+<!-- ====================================================== -->
+<h2 id="python">7 · Python siêu tốc (chỉ những gì cần để đọc code)</h2>
+<p>Bạn không cần thành thạo Python, chỉ cần đọc-hiểu được code. Đây là tất cả những gì cần:</p>
+
+<table>
+<tr><th>Cú pháp</th><th>Nghĩa là gì</th></tr>
+<tr><td><code># ghi chú</code></td><td>Dòng bắt đầu bằng <code>#</code> là <b>chú thích</b>, máy bỏ qua, chỉ để người đọc.</td></tr>
+<tr><td><code>x = 5</code></td><td>Gán: tạo một "hộp" tên <code>x</code> chứa giá trị 5.</td></tr>
+<tr><td><code>def ten_ham(a, b):</code></td><td>Định nghĩa một <b>hàm</b> (một việc làm có tên), nhận đầu vào <code>a</code>, <code>b</code>.</td></tr>
+<tr><td><code>return kq</code></td><td>Hàm <b>trả về</b> kết quả <code>kq</code> cho nơi gọi nó.</td></tr>
+<tr><td><code>for i in range(4):</code></td><td><b>Vòng lặp</b>: làm đi làm lại, với <code>i</code> = 0, 1, 2, 3.</td></tr>
+<tr><td><code>if đk: ... else: ...</code></td><td><b>Rẽ nhánh</b>: nếu điều kiện đúng làm vế trên, ngược lại làm vế dưới.</td></tr>
+<tr><td><code>class TenLop:</code></td><td>Một <b>"khuôn"</b> gom dữ liệu + các hàm liên quan vào một chỗ (vd: bộ nhận dạng).</td></tr>
+</table>
+
+<h4>Thư viện <code>numpy</code> — "máy tính bỏ túi" cho vector &amp; ma trận</h4>
+<p>Toàn bộ phép toán nặng đều nhờ thư viện <code>numpy</code> (viết tắt <code>np</code>). Đây là các lệnh hay gặp trong dự án:</p>
+<table>
+<tr><th>Lệnh numpy</th><th>Làm gì</th></tr>
+<tr><td><code>np.array([1,2,3])</code></td><td>Tạo một vector từ danh sách số.</td></tr>
+<tr><td><code>np.mean(X, axis=0)</code></td><td>Tính <b>trung bình theo cột</b> → ra khuôn mặt trung bình (§3.4).</td></tr>
+<tr><td><code>A @ B</code></td><td>Dấu <code>@</code> là <b>nhân ma trận</b> (làm hàng loạt tích vô hướng).</td></tr>
+<tr><td><code>A.T</code></td><td><b>Chuyển vị</b>: lật ma trận (hàng ↔ cột).</td></tr>
+<tr><td><code>np.linalg.eigh(L)</code></td><td>Tìm <b>trị riêng &amp; vector riêng</b> (§3.6) cho ma trận đối xứng. Đây là "động cơ" toán học.</td></tr>
+<tr><td><code>np.linalg.norm(v)</code></td><td>Tính <b>độ dài</b> của vector (dùng cho khoảng cách §3.3).</td></tr>
+<tr><td><code>np.argmin(d)</code></td><td>Trả về <b>vị trí của giá trị nhỏ nhất</b> → dùng để tìm "láng giềng gần nhất".</td></tr>
+</table>
+
+<div class="note">
+  <b>Về luật bài tập:</b> Đề cho phép dùng <code>numpy</code> cho các phép cơ bản (cộng, nhân, căn…) và cho phép gọi
+  <code>numpy.linalg.eigh</code> để giải trị riêng. Điều <b>cấm</b> là gọi thư viện máy học làm sẵn cả thuật toán
+  (như <code>sklearn.decomposition.PCA</code>). Tức là: được dùng máy tính bỏ túi, nhưng phải tự bấm từng bước —
+  không được mua sẵn lời giải.
+</div>
+
+<!-- ====================================================== -->
+<h2 id="cau-truc">8 · Cấu trúc dự án &amp; đọc từng file code</h2>
+
+<pre><code>DSTT_ComputerVision/
+│
+├── main_projection.py      <span class="cmt"># ▶ Chạy file này là chạy toàn bộ (Bước 1→4)</span>
+├── manual_example.py       <span class="cmt"># ▶ Ví dụ tính tay 4 ảnh 3×3 (§5)</span>
+├── requirements.txt        <span class="cmt"># Danh sách thư viện cần cài</span>
+│
+├── src/                    <span class="cmt"># "Bộ não" — các module thuật toán</span>
+│   ├── dataloader.py       <span class="cmt"># Bước 1: đọc ảnh, biến thành vector, chia train/test</span>
+│   ├── recognizer.py       <span class="cmt"># Bước 2: ⭐ thuật toán Eigenfaces (quan trọng nhất)</span>
+│   ├── baseline.py         <span class="cmt"># Bước 3: phương pháp "đối chứng" để so sánh</span>
+│   ├── evaluator.py        <span class="cmt"># Bước 3: chấm điểm độ chính xác, thử nhiều k</span>
+│   └── visualizer.py       <span class="cmt"># Bước 4: vẽ 5 biểu đồ kết quả</span>
+│
+├── web/streamlit_app.py    <span class="cmt"># Giao diện web demo (kéo-thả ảnh để thử)</span>
+├── data/orl_faces/         <span class="cmt"># 400 ảnh: s1/..s40/, mỗi thư mục 10 ảnh .pgm</span>
+└── outputs/                <span class="cmt"># Nơi lưu các biểu đồ .png sau khi chạy</span></code></pre>
+
+<div class="tip"><b>Đọc theo thứ tự nào?</b> <code>dataloader</code> → <code>recognizer</code> → <code>baseline</code> → <code>evaluator</code> → <code>visualizer</code>.
+Đúng bằng thứ tự dữ liệu "chảy" qua chương trình.</div>
+
+<!-- ===== dataloader ===== -->
+<h3 id="code-dataloader">8.1 · <code>src/dataloader.py</code> — đọc và chuẩn bị dữ liệu <span class="tag">Bước 1</span></h3>
+<p>File này lo việc biến 400 file ảnh trên ổ đĩa thành các vector số mà thuật toán dùng được. Hàm cốt lõi:</p>
+<pre><code class="language-python"><span class="kw">def</span> <span class="fn">load_image_as_vector</span>(image_path):
+    img         = Image.open(image_path)        <span class="cmt"># mở file ảnh</span>
+    img_gray    = img.convert(<span class="str">"L"</span>)              <span class="cmt"># ép về trắng đen (mỗi pixel 1 số 0–255)</span>
+    img_resized = img_gray.resize((<span class="num">92</span>, <span class="num">112</span>))   <span class="cmt"># ép về đúng kích thước chuẩn</span>
+    img_array   = np.array(img_resized)         <span class="cmt"># thành bảng số 2D (112×92)</span>
+    img_vector  = img_array.flatten()           <span class="cmt"># DUỖI thành 1 hàng → vector 10304 số (§2)</span>
+    <span class="kw">return</span> img_vector</code></pre>
+
+<p>Và hàm chia dữ liệu thành <b>tập huấn luyện</b> (để học) và <b>tập kiểm tra</b> (để chấm điểm):</p>
+<table>
+<tr><th>Tập</th><th>Gồm</th><th>Dùng để</th></tr>
+<tr><td><b>Train</b> (huấn luyện)</td><td>8 ảnh đầu mỗi người = 320 ảnh</td><td>Cho máy "học" mặt từng người</td></tr>
+<tr><td><b>Test</b> (kiểm tra)</td><td>2 ảnh cuối mỗi người = 80 ảnh</td><td>Kiểm tra máy nhận dạng đúng không (máy <b>chưa từng thấy</b> các ảnh này)</td></tr>
+</table>
+<div class="note"><b>Vì sao phải tách ra?</b> Như đi học: ta ôn bằng đề cũ (train) nhưng <b>thi bằng đề mới</b> (test).
+Nếu chấm điểm bằng chính ảnh đã học thì gian lận — máy chỉ cần "học thuộc lòng" là được điểm cao mà không thực sự giỏi.</div>
+
+<!-- ===== recognizer ===== -->
+<h3 id="code-recognizer">8.2 · <code>src/recognizer.py</code> — ⭐ Thuật toán chính <span class="tag">Bước 2</span></h3>
+<p>Đây là file <b>quan trọng nhất</b> — nó hiện thực toàn bộ phần toán bạn đã học ở §3–§4. Nó là một <code>class</code>
+(khuôn) tên <code>OrthogonalFaceRecognizer</code> với 3 việc chính:</p>
+
+<h4>① <code>fit()</code> — Học không gian eigenface</h4>
+<p>Đây là Giai đoạn A (§4). Code khớp <b>1-1</b> với các bước bạn đã hiểu:</p>
+<pre><code class="language-python"><span class="kw">def</span> <span class="fn">fit</span>(self, X_train, y_train):
+    N, p = X_train.shape                       <span class="cmt"># N=320 ảnh, p=10304 pixel</span>
+
+    self.mean_face_ = np.mean(X_train, axis=<span class="num">0</span>)  <span class="cmt"># ① khuôn mặt trung bình x̄  (§3.4)</span>
+    Phi = X_train - self.mean_face_            <span class="cmt"># ② trung tâm hóa: trừ trung bình (§3.4)</span>
+
+    L = (Phi @ Phi.T) / N                      <span class="cmt"># ③ ma trận nhỏ — "thủ thuật" (§6)</span>
+    eigenvalues_L, V = np.linalg.eigh(L)       <span class="cmt"># ④ tìm trị riêng & vector riêng (§3.6)</span>
+
+    idx = np.argsort(eigenvalues_L)[::-<span class="num">1</span>]      <span class="cmt"># ⑤ sắp xếp: quan trọng nhất lên đầu</span>
+    eigenvalues_L, V = eigenvalues_L[idx], V[:, idx]
+
+    U = Phi.T @ V                              <span class="cmt"># ⑥ biến đổi ngược ra eigenfaces thật (§6)</span>
+    U = U / np.linalg.norm(U, axis=<span class="num">0</span>)         <span class="cmt">#    chuẩn hóa: mỗi eigenface có độ dài 1</span>
+
+    self.eigenfaces_ = U[:, :k]                <span class="cmt"># ⑦ chỉ giữ k eigenface tốt nhất</span>
+    self.train_projections_ = self.project(X_train)  <span class="cmt"># ⑧ chiếu & lưu tọa độ mọi ảnh train</span></code></pre>
+
+<h4>② <code>project()</code> — Phép chiếu vuông góc ⭐ (§3.5)</h4>
+<p>Chỉ <b>một dòng toán</b> nhưng là trái tim của cả dự án: biến một ảnh thành bộ tọa độ ngắn gọn.</p>
+<pre><code class="language-python"><span class="kw">def</span> <span class="fn">project</span>(self, X):
+    X_centered  = X - self.mean_face_          <span class="cmt"># trừ khuôn mặt trung bình trước</span>
+    projections = X_centered @ self.eigenfaces_ <span class="cmt"># ⭐ nhân với eigenfaces = phép chiếu</span>
+    <span class="kw">return</span> projections                         <span class="cmt"># ra tọa độ k chiều (vd k=50)</span></code></pre>
+<div class="note">Công thức sách viết $\hat{\mathbf{y}}=U^T(\mathbf{x}-\bar{\mathbf{x}})$. Code viết <code>(X - mean) @ U</code>
+trông hơi khác vì ở đây ảnh được xếp theo <b>hàng</b> (cho tiện numpy) thay vì theo cột như sách — bản chất là một.</div>
+
+<h4>③ <code>predict()</code> — Nhận dạng bằng láng giềng gần nhất (§3.3)</h4>
+<pre><code class="language-python"><span class="kw">def</span> <span class="fn">predict</span>(self, X_test):
+    test_projs = self.project(X_test)          <span class="cmt"># ① chiếu ảnh mới ra tọa độ</span>
+    <span class="kw">for</span> i <span class="kw">in</span> range(N_test):
+        diffs     = self.train_projections_ - test_projs[i]   <span class="cmt"># ② hiệu với mọi ảnh train</span>
+        distances = np.sqrt(np.sum(diffs**<span class="num">2</span>, axis=<span class="num">1</span>))    <span class="cmt">#    khoảng cách Euclidean (§3.3)</span>
+        nearest   = np.argmin(distances)       <span class="cmt"># ③ tìm ảnh train GẦN NHẤT</span>
+        predictions[i] = self.train_labels_[nearest]  <span class="cmt">#    → trả về tên người đó</span></code></pre>
+
+<!-- ===== baseline ===== -->
+<h3 id="code-baseline">8.3 · <code>src/baseline.py</code> — Phương pháp đối chứng <span class="tag">Bước 3</span></h3>
+<p>
+Để chứng minh Eigenfaces thực sự <b>tốt hơn</b>, ta cần một đối thủ "ngây thơ" để so sánh.
+<code>PixelKNNRecognizer</code> nhận dạng bằng cách so khoảng cách <b>trực tiếp trên 10.304 pixel gốc</b>,
+<u>không</u> chiếu, không nén gì cả.
+</p>
+<table>
+<tr><th></th><th>Eigenfaces (recognizer.py)</th><th>Baseline (baseline.py)</th></tr>
+<tr><td>So sánh trong không gian</td><td>~50 chiều (đã chiếu) ✔ gọn</td><td>10.304 chiều (pixel thô)</td></tr>
+<tr><td>Có "học" đặc trưng?</td><td>Có (tìm eigenface)</td><td>Không — chỉ ghi nhớ thô</td></tr>
+<tr><td>Tốc độ &amp; độ chính xác</td><td>Nhanh &amp; chính xác hơn</td><td>Chậm &amp; dễ sai khi đổi ánh sáng/nhiễu</td></tr>
+</table>
+<div class="tip">Đề bài <i>"cho điểm cao nếu có so sánh các phương pháp khác nhau"</i> → đây chính là lý do baseline tồn tại.</div>
+
+<!-- ===== evaluator + visualizer ===== -->
+<h3 id="code-khac">8.4 · <code>evaluator.py</code> &amp; <code>visualizer.py</code> — Chấm điểm &amp; vẽ biểu đồ</h3>
+<p><b><code>evaluator.py</code></b> = "giám khảo". Nó:</p>
+<ul>
+  <li>Tính <b>độ chính xác</b> (accuracy) = số ảnh đoán đúng / tổng số ảnh test.</li>
+  <li>Thử nhiều giá trị $k$ (số eigenface giữ lại: 5, 10, 20, …, 150) để tìm $k$ <b>tốt nhất</b>.</li>
+  <li>Chạy cả 2 phương pháp rồi in bảng so sánh.</li>
+</ul>
+<p><b><code>visualizer.py</code></b> = "họa sĩ". Nó vẽ 5 biểu đồ <code>.png</code> vào thư mục <code>outputs/</code>
+(khuôn mặt trung bình, các eigenface, ví dụ nhận dạng, đường cong độ chính xác, biểu đồ phương sai).</p>
+
+<!-- ====================================================== -->
+<h2 id="chay">9 · Cách chạy dự án (làm theo từng bước)</h2>
+
+<h3>Bước 1 — Cài Python &amp; thư viện</h3>
+<p>Cần Python ≥ 3.8. Mở Terminal/PowerShell trong thư mục dự án và gõ:</p>
+<pre><code>pip install -r requirements.txt</code></pre>
+<p>Lệnh này cài: <code>numpy</code> (toán), <code>matplotlib</code> (vẽ), <code>Pillow</code> (đọc ảnh), <code>opencv-python</code>, <code>streamlit</code> (web demo).</p>
+
+<h3>Bước 2 — Chạy toàn bộ pipeline (khuyến nghị)</h3>
+<pre><code>python main_projection.py</code></pre>
+<p>Chương trình sẽ tự động: tải dataset (lần đầu) → tìm $k$ tốt nhất → huấn luyện → so sánh với baseline → vẽ 5 biểu đồ vào <code>outputs/</code>. Bạn sẽ thấy bảng kết quả in ra màn hình.</p>
+
+<h3>Bước 3 — Xem ví dụ tính tay (để hiểu bản chất)</h3>
+<pre><code>python manual_example.py</code></pre>
+<p>In ra từng phép tính của §5 và tạo hình <code>outputs/manual_example.png</code>. <b>Rất nên chạy cái này khi học.</b></p>
+
+<h3>Bước 4 — (Tùy chọn) Giao diện web kéo-thả ảnh</h3>
+<pre><code>streamlit run web/streamlit_app.py</code></pre>
+<p>Mở trình duyệt ở <code>http://localhost:8501</code>, cho phép tải lên một ảnh khuôn mặt và xem máy nhận dạng từng bước.</p>
+
+<div class="warn"><b>Nếu tải dataset tự động bị lỗi</b> (do mạng/firewall): chương trình sẽ in hướng dẫn tải thủ công.
+Tải file <code>att_faces.zip</code>, giải nén sao cho có cấu trúc <code>data/orl_faces/s1/1.pgm …</code> rồi chạy lại.</div>
+
+<!-- ====================================================== -->
+<h2 id="ket-qua">10 · Đọc hiểu kết quả</h2>
+
+<h3>Bảng kết quả kỳ vọng</h3>
+<table>
+<tr><th>Phương pháp</th><th>Độ chính xác kỳ vọng</th><th>Nghĩa là</th></tr>
+<tr><td><b>Eigenfaces</b> (k tối ưu ~50)</td><td class="good">92 – 97%</td><td>Trong ~80 ảnh test, đoán đúng ~74–78 ảnh</td></tr>
+<tr><td>Baseline Pixel-KNN</td><td>80 – 88%</td><td>Yếu hơn rõ rệt</td></tr>
+<tr><td>Mức cải thiện</td><td class="good">+5 đến +15%</td><td>Bằng chứng phép chiếu thực sự có ích</td></tr>
+</table>
+
+<h3>Năm biểu đồ trong <code>outputs/</code></h3>
+<table>
+<tr><th>File</th><th>Cho thấy điều gì</th></tr>
+<tr><td><code>mean_face.png</code></td><td>Khuôn mặt trung bình $\bar{\mathbf{x}}$ (§3.4).</td></tr>
+<tr><td><code>eigenfaces.png</code></td><td>20 eigenface quan trọng nhất — các "khuôn mặt gốc" (§3.6).</td></tr>
+<tr><td><code>recognition.png</code></td><td>Ví dụ nhận dạng: 1 ca đúng (viền xanh) + 1 ca sai (viền đỏ).</td></tr>
+<tr><td><code>accuracy_vs_k.png</code></td><td>Độ chính xác thay đổi thế nào theo số eigenface $k$ → giúp chọn $k$ tốt nhất.</td></tr>
+<tr><td><code>variance_ratio.png</code></td><td>Mỗi eigenface "giải thích" bao nhiêu % khác biệt; cần bao nhiêu để đạt 95%.</td></tr>
+</table>
+
+<div class="imgbox">
+  <img src="outputs/accuracy_vs_k.png" alt="Accuracy vs k">
+  <div class="cap"><code>accuracy_vs_k.png</code> — Đường cong này thường tăng nhanh rồi đi ngang: thêm eigenface lúc đầu giúp ích nhiều,
+  nhưng sau một ngưỡng (~50) thì gần như không cải thiện. Đường thẳng baseline luôn nằm thấp hơn.</div>
+</div>
+
+<div class="imgbox">
+  <img src="outputs/recognition.png" alt="Ví dụ nhận dạng">
+  <div class="cap"><code>recognition.png</code> — Bên trái: ảnh cần nhận dạng. Bên phải: người mà máy đoán ra. Viền xanh = đúng, viền đỏ = sai.</div>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="faq">11 · Câu hỏi thường gặp (kiểu giám khảo hay hỏi)</h2>
+
+<details><summary>❓ "Phép chiếu vuông góc" nằm ở chỗ nào trong code?</summary>
+<p>Ở hàm <code>project()</code> trong <a href="src/recognizer.py"><code>src/recognizer.py</code></a>, đúng dòng
+<code>X_centered @ self.eigenfaces_</code>. Đó là $U^T(\mathbf{x}-\bar{\mathbf{x}})$ — chiếu ảnh xuống không gian eigenface (§3.5).</p></details>
+
+<details><summary>❓ Tại sao ma trận là 320×320 chứ không phải 10304×10304?</summary>
+<p>Vì dùng "thủ thuật Turk &amp; Pentland" (§6): tính ma trận nhỏ $L=\Phi\Phi^T/N$ thay cho ma trận khổng lồ $C=\Phi^T\Phi/N$,
+rồi biến đổi ngược. Cho cùng kết quả nhưng nhanh hơn hàng nghìn lần và không hết RAM.</p></details>
+
+<details><summary>❓ "Eigenface" là cái gì một cách trực quan?</summary>
+<p>Là các "khuôn mặt gốc" để pha trộn (như 3 màu sơn gốc). Về toán, chúng là các vector riêng của ma trận hiệp phương sai —
+tức các <b>hướng</b> mà tập khuôn mặt biến đổi mạnh nhất (§3.6). Mọi khuôn mặt thật ≈ trung bình + tổ hợp các eigenface.</p></details>
+
+<details><summary>❓ Vì sao không dùng thẳng pixel mà phải chiếu cho phức tạp?</summary>
+<p>Vì so trên pixel thô (baseline) <b>chậm</b> (10.304 chiều) và <b>dễ sai</b> khi ánh sáng/nhiễu thay đổi.
+Phép chiếu giữ lại nét quan trọng, bỏ nhiễu → nhanh hơn và chính xác hơn. Bảng so sánh ở §10 là bằng chứng.</p></details>
+
+<details><summary>❓ "k" là gì và chọn thế nào?</summary>
+<p>$k$ = số eigenface giữ lại. $k$ nhỏ → mất thông tin; $k$ quá lớn → giữ cả nhiễu, chậm. Dự án thử nhiều $k$
+rồi chọn cái cho độ chính xác cao nhất (xem <code>accuracy_vs_k.png</code>), thường quanh $k\approx50$.</p></details>
+
+<details><summary>❓ Tại sao dùng <code>eigh</code> mà không phải <code>eig</code>?</summary>
+<p>Ma trận hiệp phương sai là <b>thực &amp; đối xứng</b>. Với loại ma trận này, <code>numpy.linalg.eigh</code> ổn định hơn,
+nhanh hơn và đảm bảo trị riêng là số thực (không lẫn số phức do sai số). <code>eig</code> dùng cho ma trận tổng quát.</p></details>
+
+<!-- ====================================================== -->
+<h2 id="tu-dien">12 · Từ điển thuật ngữ (tra nhanh)</h2>
+<table>
+<tr><th>Thuật ngữ</th><th>Giải thích một câu</th></tr>
+<tr><td><b>Pixel</b></td><td>Một điểm ảnh; với ảnh xám là một số 0 (đen) → 255 (trắng).</td></tr>
+<tr><td><b>Vector hóa / flatten</b></td><td>Duỗi bảng pixel 2D thành một hàng số dài (vector).</td></tr>
+<tr><td><b>Vector</b></td><td>Một danh sách số có thứ tự; ở đây = một ảnh.</td></tr>
+<tr><td><b>Ma trận</b></td><td>Một bảng số; ở đây = nhiều ảnh xếp chồng.</td></tr>
+<tr><td><b>Tích vô hướng (dot product)</b></td><td>Nhân từng cặp số rồi cộng lại → một số đo "độ giống".</td></tr>
+<tr><td><b>Khoảng cách Euclidean</b></td><td>Căn bậc hai của tổng bình phương các hiệu → đo hai ảnh khác nhau bao nhiêu.</td></tr>
+<tr><td><b>Mean face (khuôn mặt trung bình)</b></td><td>Trung bình cộng của mọi ảnh huấn luyện.</td></tr>
+<tr><td><b>Trung tâm hóa (centering)</b></td><td>Lấy ảnh trừ đi khuôn mặt trung bình để lấy "nét riêng".</td></tr>
+<tr><td><b>Trị riêng (eigenvalue)</b></td><td>Độ quan trọng của một hướng biến đổi (số càng lớn càng quan trọng).</td></tr>
+<tr><td><b>Vector riêng (eigenvector)</b></td><td>Một hướng biến đổi đặc trưng của dữ liệu.</td></tr>
+<tr><td><b>Eigenface</b></td><td>Một vector riêng được "vẽ lại" thành ảnh — một "khuôn mặt gốc".</td></tr>
+<tr><td><b>Phép chiếu vuông góc</b></td><td>Hạ một vector nhiều chiều xuống không gian ít chiều (như đổ bóng), giữ nét chính.</td></tr>
+<tr><td><b>Trực chuẩn (orthonormal)</b></td><td>Các eigenface vuông góc nhau và có độ dài 1 → phép chiếu không méo.</td></tr>
+<tr><td><b>$k$ (n_components)</b></td><td>Số eigenface giữ lại để chiếu.</td></tr>
+<tr><td><b>1-NN (láng giềng gần nhất)</b></td><td>Gán nhãn theo ảnh huấn luyện gần nhất.</td></tr>
+<tr><td><b>Train / Test</b></td><td>Tập để học / tập để thi (chấm điểm trung thực).</td></tr>
+<tr><td><b>Accuracy (độ chính xác)</b></td><td>Tỉ lệ ảnh test được đoán đúng.</td></tr>
+<tr><td><b>Baseline</b></td><td>Phương pháp đối chứng đơn giản để so sánh.</td></tr>
+<tr><td><b>numpy</b></td><td>Thư viện Python cho phép tính vector/ma trận.</td></tr>
+</table>
+
+<hr>
+<p class="toc-top">
+  📌 <b>Tóm lại trong 3 câu:</b> (1) Mỗi khuôn mặt là một dãy số (vector). (2) Ta tìm vài chục "khuôn mặt gốc" (eigenface)
+  rồi mô tả mọi khuôn mặt bằng cách pha trộn chúng — đó là phép chiếu vuông góc. (3) Nhận dạng ảnh mới = tìm khuôn mặt cũ
+  có "công thức pha trộn" gần giống nó nhất. Chúc bạn báo cáo tốt! 🎓
+</p>
+
+</main>
+</div>
+</body>
+</html>
